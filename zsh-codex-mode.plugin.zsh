@@ -308,6 +308,7 @@ function _zsh_codex_mode_accept_line() {
     return
   fi
 
+  local -i buffer_lines=$BUFFERLINES
   zle -I
   BUFFER=""
   CURSOR=0
@@ -320,8 +321,8 @@ function _zsh_codex_mode_accept_line() {
     fi
   }
   (( turn_completed )) || return
-  # ZLE clears the preceding row when it redraws; reserve one so the answer survives.
-  print
+  # ZLE clears the rows occupied by the preceding buffer when it redraws.
+  repeat $buffer_lines print
   zle -U $'\e[99~'
 }
 
