@@ -46,9 +46,11 @@ source ~/.zsh/zsh-codex-mode/zsh-codex-mode.plugin.zsh
 
 Codex mode uses a `✨` prompt. Replies stream directly into the terminal, and the conversation is discarded when you leave the mode.
 
-The plugin uses the model from your Codex configuration. Conversations use medium reasoning effort, no approval prompts, and a read-only sandbox. Codex plugins and MCP servers are disabled, and only answer text is shown.
+The plugin uses the model from your Codex configuration. Conversations use medium reasoning effort, no approval prompts, and a read-only sandbox. Codex plugins and MCP servers are disabled.
 
-zsh-vi-mode and zsh-autosuggestions are supported but not required.
+Tool calls appear as one-line `›` activity hints. Shell command previews are collapsed to one line and limited to 100 characters; command output and reasoning remain hidden.
+
+zsh-vi-mode, zsh-autosuggestions, and zsh-syntax-highlighting are supported but not required. Autosuggestions and syntax highlighting are paused while Codex mode is active.
 
 ## License
 

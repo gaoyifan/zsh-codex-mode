@@ -4,6 +4,7 @@ typeset -gi _zsh_codex_mode_request_id=0
 typeset -gi _zsh_codex_mode_read_fd=-1
 typeset -gi _zsh_codex_mode_write_fd=-1
 typeset -gi _zsh_codex_mode_restore_autosuggest=0
+typeset -gi _zsh_codex_mode_restore_highlighting=0
 typeset -g _zsh_codex_mode_saved_prompt=""
 typeset -g _zsh_codex_mode_saved_rprompt=""
 typeset -g _zsh_codex_mode_saved_predisplay=""
@@ -11,6 +12,7 @@ typeset -g _zsh_codex_mode_saved_emacs_enter=""
 typeset -g _zsh_codex_mode_saved_viins_enter=""
 typeset -g _zsh_codex_mode_saved_emacs_clear=""
 typeset -g _zsh_codex_mode_saved_viins_clear=""
+typeset -ga _zsh_codex_mode_saved_highlighters=()
 typeset -g _zsh_codex_mode_thread_id=""
 typeset -g _zsh_codex_mode_log=""
 
@@ -131,10 +133,12 @@ function _zsh_codex_mode_stop_server() {
   _zsh_codex_mode_read_fd=-1
   _zsh_codex_mode_write_fd=-1
   _zsh_codex_mode_restore_autosuggest=0
+  _zsh_codex_mode_restore_highlighting=0
   _zsh_codex_mode_saved_emacs_enter=""
   _zsh_codex_mode_saved_viins_enter=""
   _zsh_codex_mode_saved_emacs_clear=""
   _zsh_codex_mode_saved_viins_clear=""
+  _zsh_codex_mode_saved_highlighters=()
   _zsh_codex_mode_thread_id=""
   _zsh_codex_mode_log=""
 }
@@ -161,6 +165,10 @@ function _zsh_codex_mode_run_turn() {
   jq --unbuffered -nrj \
     --arg thread "$_zsh_codex_mode_thread_id" \
     --argjson request "$request_id" '
+      def brief:
+        gsub("[[:space:]]+"; " ")
+        | if length > 100 then .[:99] + "…" else . end;
+
       (
         foreach inputs as $message (
           {turn: null, last_newline: true, done: false, output: null};
@@ -182,6 +190,28 @@ function _zsh_codex_mode_run_turn() {
                   and $message.params.turnId? == .turn) then
               .output = $message.params.delta
               | .last_newline = ($message.params.delta | endswith("\n"))
+            elif ($message.method? == "item/started"
+                  and $message.params.threadId? == $thread
+                  and .turn != null
+                  and $message.params.turnId? == .turn) then
+              $message.params.item as $item
+              | (if $item.type == "commandExecution" then
+                   "› $ " + (($item.commandActions[0].command // $item.command) | brief)
+                 elif $item.type == "fileChange" then
+                   "› Edit " + (($item.changes | map(.path) | join(", ")) | brief)
+                 elif $item.type == "webSearch" then
+                   "› Web search"
+                 elif $item.type == "imageView" then
+                   "› View " + ($item.path | brief)
+                 elif $item.type == "imageGeneration" then
+                   "› Generate image"
+                 elif $item.type == "collabAgentToolCall" then
+                   "› Agent " + $item.tool
+                 else null end) as $activity
+              | if $activity == null then . else
+                  .output = (if .last_newline then "" else "\n" end) + $activity + "\n"
+                  | .last_newline = true
+                end
             elif ($message.method? == "turn/completed"
                   and $message.params.threadId? == $thread
                   and .turn != null
@@ -224,6 +254,9 @@ function _zsh_codex_mode_toggle() {
     if (( _zsh_codex_mode_restore_autosuggest && $+widgets[autosuggest-enable] )); then
       zle autosuggest-enable
     fi
+    if (( _zsh_codex_mode_restore_highlighting )); then
+      ZSH_HIGHLIGHT_HIGHLIGHTERS=("${_zsh_codex_mode_saved_highlighters[@]}")
+    fi
     _zsh_codex_mode_stop_server
     PROMPT="$_zsh_codex_mode_saved_prompt"
     RPROMPT="$_zsh_codex_mode_saved_rprompt"
@@ -244,6 +277,11 @@ function _zsh_codex_mode_toggle() {
     if (( $+widgets[autosuggest-disable] )) && [[ -z "${_ZSH_AUTOSUGGEST_DISABLED+x}" ]]; then
       zle autosuggest-disable
       _zsh_codex_mode_restore_autosuggest=1
+    fi
+    if (( ${+ZSH_HIGHLIGHT_HIGHLIGHTERS} )); then
+      _zsh_codex_mode_saved_highlighters=("${ZSH_HIGHLIGHT_HIGHLIGHTERS[@]}")
+      ZSH_HIGHLIGHT_HIGHLIGHTERS=()
+      _zsh_codex_mode_restore_highlighting=1
     fi
   fi
   _zsh_codex_mode_update_predisplay
