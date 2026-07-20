@@ -37,6 +37,21 @@ Then source the plugin from `.zshrc`:
 source ~/.zsh/zsh-codex-mode/zsh-codex-mode.plugin.zsh
 ```
 
+## Configure
+
+Set these variables before loading the plugin:
+
+```zsh
+ZSH_CODEX_MODE_MODEL="" # Inherit your Codex configuration
+ZSH_CODEX_MODE_REASONING_EFFORT="medium"
+ZSH_CODEX_MODE_PROMPT="✨ "
+ZSH_CODEX_MODE_SANDBOX="danger-full-access"
+```
+
+Set the model, reasoning effort, or sandbox to an empty string to inherit the corresponding Codex setting. Sandbox values are `read-only`, `workspace-write`, and `danger-full-access`. The prompt is used verbatim, including spacing.
+
+The approval policy is always `never`. With the default `danger-full-access` sandbox, Codex can run commands, access the network, and read or modify any files available to your user without confirmation.
+
 ## Use
 
 | Key | Action |
@@ -44,9 +59,9 @@ source ~/.zsh/zsh-codex-mode/zsh-codex-mode.plugin.zsh
 | <kbd>Ctrl</kbd>+<kbd>X</kbd> | Enter or leave Codex mode |
 | <kbd>Enter</kbd> | Send a message |
 
-Codex mode uses a `✨` prompt. Replies stream directly into the terminal, and the conversation is discarded when you leave the mode.
+Codex mode uses a `✨` prompt by default. Replies stream directly into the terminal, and the conversation is discarded when you leave the mode.
 
-The plugin uses the model from your Codex configuration. Conversations use medium reasoning effort, no approval prompts, and a read-only sandbox. Codex plugins and MCP servers are disabled.
+Codex plugins and MCP servers are disabled.
 
 Tool calls appear as one-line `›` activity hints. Shell command previews are collapsed to one line and limited to 100 characters; command output and reasoning remain hidden.
 

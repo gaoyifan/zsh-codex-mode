@@ -1,3 +1,8 @@
+typeset -g ZSH_CODEX_MODE_MODEL="${ZSH_CODEX_MODE_MODEL-}"
+typeset -g ZSH_CODEX_MODE_REASONING_EFFORT="${ZSH_CODEX_MODE_REASONING_EFFORT-medium}"
+typeset -g ZSH_CODEX_MODE_PROMPT="${ZSH_CODEX_MODE_PROMPT-✨ }"
+typeset -g ZSH_CODEX_MODE_SANDBOX="${ZSH_CODEX_MODE_SANDBOX-danger-full-access}"
+
 typeset -gi _zsh_codex_mode_shell_pid=$$
 typeset -gi _zsh_codex_mode_server_pid=0
 typeset -gi _zsh_codex_mode_request_id=0
@@ -20,7 +25,7 @@ function _zsh_codex_mode_update_predisplay() {
   if [[ -n "$_zsh_codex_mode_thread_id" ]]; then
     PROMPT=""
     RPROMPT=""
-    PREDISPLAY="✨ "
+    PREDISPLAY="$ZSH_CODEX_MODE_PROMPT"
   fi
 }
 
@@ -85,22 +90,27 @@ function _zsh_codex_mode_start_server() {
   request_id=$((++_zsh_codex_mode_request_id))
   if ! jq -c \
     --argjson id "$request_id" \
-    --arg cwd "$PWD" '
+    --arg cwd "$PWD" \
+    --arg model "$ZSH_CODEX_MODE_MODEL" \
+    --arg sandbox "$ZSH_CODEX_MODE_SANDBOX" '
       {
         id: $id,
         method: "thread/start",
-        params: {
-          cwd: $cwd,
-          approvalPolicy: "never",
-          sandbox: "read-only",
-          config: {
-            mcp_servers: (
-              (.config.mcp_servers // {})
-              | with_entries(.value = {enabled: false})
-            )
-          },
-          ephemeral: true
-        }
+        params: (
+          {
+            cwd: $cwd,
+            approvalPolicy: "never",
+            config: {
+              mcp_servers: (
+                (.config.mcp_servers // {})
+                | with_entries(.value = {enabled: false})
+              )
+            },
+            ephemeral: true
+          }
+          + if $model == "" then {} else {model: $model} end
+          + if $sandbox == "" then {} else {sandbox: $sandbox} end
+        )
       }
     ' <<<"$REPLY" 1>&$_zsh_codex_mode_write_fd || ! _zsh_codex_mode_read_response "$request_id"; then
     [[ -s "$_zsh_codex_mode_log" ]] && command cat -- "$_zsh_codex_mode_log"
@@ -150,15 +160,18 @@ function _zsh_codex_mode_run_turn() {
   jq -nc \
     --argjson id "$request_id" \
     --arg thread "$_zsh_codex_mode_thread_id" \
-    --arg prompt "$prompt" '
+    --arg prompt "$prompt" \
+    --arg effort "$ZSH_CODEX_MODE_REASONING_EFFORT" '
       {
         id: $id,
         method: "turn/start",
-        params: {
-          threadId: $thread,
-          input: [{type: "text", text: $prompt}],
-          effort: "medium"
-        }
+        params: (
+          {
+            threadId: $thread,
+            input: [{type: "text", text: $prompt}]
+          }
+          + if $effort == "" then {} else {effort: $effort} end
+        )
       }
     ' 1>&$_zsh_codex_mode_write_fd || return 1
 
