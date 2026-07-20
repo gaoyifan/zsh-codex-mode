@@ -45,16 +45,16 @@ Set these variables before loading the plugin:
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `ZSH_CODEX_MODE_MODEL` | Codex setting | Model |
-| `ZSH_CODEX_MODE_REASONING_EFFORT` | Codex setting | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, or `ultra`; model-dependent |
 | `ZSH_CODEX_MODE_PROMPT` | `✨ ` | Prompt, including spacing |
 | `ZSH_CODEX_MODE_INPUT_STYLE` | `fg=green` | ZLE input style; empty disables it |
-| `ZSH_CODEX_MODE_SANDBOX` | Codex setting | `read-only`, `workspace-write`, or `danger-full-access` |
-| `ZSH_CODEX_MODE_APPROVAL_POLICY` | Codex setting | `untrusted`, `on-request`, or `never` |
 | `ZSH_CODEX_MODE_KEY` | `^X` | Toggle key; empty disables the binding |
-| `ZSH_CODEX_MODE_MCP` | Codex setting | `inherit` or `disabled` |
 | `ZSH_CODEX_MODE_ACTIVITY_MAX_LENGTH` | `100` | Positive maximum command and path preview length |
 | `ZSH_CODEX_MODE_SHOW_ACTIVITY` | `1` | `1` to show tool activity, `0` to hide it |
+| `ZSH_CODEX_MODE_MODEL` | Codex setting | Model |
+| `ZSH_CODEX_MODE_REASONING_EFFORT` | Codex setting | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, or `ultra`; model-dependent |
+| `ZSH_CODEX_MODE_SANDBOX` | Codex setting | `read-only`, `workspace-write`, or `danger-full-access` |
+| `ZSH_CODEX_MODE_APPROVAL_POLICY` | Codex setting | `untrusted`, `on-request`, or `never` |
+| `ZSH_CODEX_MODE_MCP` | Codex setting | `inherit` or `disabled` |
 
 ## Use
 
