@@ -1,4 +1,14 @@
 # zsh-codex-mode
+<!-- Keep these links. Translations will automatically update with the README. -->
+[Deutsch](https://zdoc.app/de/gaoyifan/zsh-codex-mode) | 
+[English](https://zdoc.app/en/gaoyifan/zsh-codex-mode) | 
+[Español](https://zdoc.app/es/gaoyifan/zsh-codex-mode) | 
+[français](https://zdoc.app/fr/gaoyifan/zsh-codex-mode) | 
+[日本語](https://zdoc.app/ja/gaoyifan/zsh-codex-mode) | 
+[한국어](https://zdoc.app/ko/gaoyifan/zsh-codex-mode) | 
+[Português](https://zdoc.app/pt/gaoyifan/zsh-codex-mode) | 
+[Русский](https://zdoc.app/ru/gaoyifan/zsh-codex-mode) | 
+[中文](https://zdoc.app/zh/gaoyifan/zsh-codex-mode)
 
 Codex, right in your Zsh.
 
