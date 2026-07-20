@@ -16,18 +16,23 @@ typeset -gi _zsh_codex_mode_read_fd=-1
 typeset -gi _zsh_codex_mode_write_fd=-1
 typeset -gi _zsh_codex_mode_restore_autosuggest=0
 typeset -gi _zsh_codex_mode_restore_highlighting=0
+typeset -gi _zsh_codex_mode_emulate_eof="${_zsh_codex_mode_emulate_eof-0}"
 typeset -g _zsh_codex_mode_saved_prompt=""
 typeset -g _zsh_codex_mode_saved_rprompt=""
 typeset -g _zsh_codex_mode_saved_predisplay=""
 typeset -g _zsh_codex_mode_saved_emacs_enter=""
 typeset -g _zsh_codex_mode_saved_viins_enter=""
-typeset -g _zsh_codex_mode_saved_emacs_eof=""
-typeset -g _zsh_codex_mode_saved_viins_eof=""
 typeset -g _zsh_codex_mode_saved_emacs_clear=""
 typeset -g _zsh_codex_mode_saved_viins_clear=""
 typeset -ga _zsh_codex_mode_saved_highlighters=()
 typeset -g _zsh_codex_mode_thread_id=""
 typeset -g _zsh_codex_mode_log=""
+
+# ZLE snapshots IGNORE_EOF before widgets run, so it must be set when the plugin loads.
+if [[ ! -o ignore_eof ]]; then
+  setopt ignore_eof
+  _zsh_codex_mode_emulate_eof=1
+fi
 
 function _zsh_codex_mode_update_predisplay() {
   if (( _zsh_codex_mode_server_pid > 0 )); then
@@ -168,8 +173,6 @@ function _zsh_codex_mode_stop_server() {
   _zsh_codex_mode_restore_highlighting=0
   _zsh_codex_mode_saved_emacs_enter=""
   _zsh_codex_mode_saved_viins_enter=""
-  _zsh_codex_mode_saved_emacs_eof=""
-  _zsh_codex_mode_saved_viins_eof=""
   _zsh_codex_mode_saved_emacs_clear=""
   _zsh_codex_mode_saved_viins_clear=""
   _zsh_codex_mode_saved_highlighters=()
@@ -291,8 +294,6 @@ function _zsh_codex_mode_toggle() {
   if (( _zsh_codex_mode_server_pid > 0 )); then
     eval "$_zsh_codex_mode_saved_emacs_enter"
     eval "$_zsh_codex_mode_saved_viins_enter"
-    eval "$_zsh_codex_mode_saved_emacs_eof"
-    eval "$_zsh_codex_mode_saved_viins_eof"
     eval "$_zsh_codex_mode_saved_emacs_clear"
     eval "$_zsh_codex_mode_saved_viins_clear"
     if (( _zsh_codex_mode_restore_autosuggest && $+widgets[autosuggest-enable] )); then
@@ -313,14 +314,10 @@ function _zsh_codex_mode_toggle() {
     _zsh_codex_mode_saved_predisplay="$PREDISPLAY"
     _zsh_codex_mode_saved_emacs_enter="$(bindkey -M emacs -L '^M')"
     _zsh_codex_mode_saved_viins_enter="$(bindkey -M viins -L '^M')"
-    _zsh_codex_mode_saved_emacs_eof="$(bindkey -M emacs -L '^D')"
-    _zsh_codex_mode_saved_viins_eof="$(bindkey -M viins -L '^D')"
     _zsh_codex_mode_saved_emacs_clear="$(bindkey -M emacs -L '^[[99~')"
     _zsh_codex_mode_saved_viins_clear="$(bindkey -M viins -L '^[[99~')"
     bindkey -M emacs '^M' _zsh_codex_mode_accept_line
     bindkey -M viins '^M' _zsh_codex_mode_accept_line
-    bindkey -M emacs '^D' _zsh_codex_mode_toggle
-    bindkey -M viins '^D' _zsh_codex_mode_toggle
     bindkey -M emacs '^[[99~' _zsh_codex_mode_clear_buffer
     bindkey -M viins '^[[99~' _zsh_codex_mode_clear_buffer
     if (( $+widgets[autosuggest-disable] )) && [[ -z "${_ZSH_AUTOSUGGEST_DISABLED+x}" ]]; then
@@ -377,16 +374,52 @@ function _zsh_codex_mode_accept_line() {
   zle -U $'\e[99~'
 }
 
+function _zsh_codex_mode_eof_emacs() {
+  if (( _zsh_codex_mode_server_pid > 0 )); then
+    _zsh_codex_mode_toggle
+  elif (( _zsh_codex_mode_emulate_eof )) && [[ -z "$BUFFER" ]]; then
+    exit
+  else
+    zle _zsh_codex_mode_original_eof_emacs
+  fi
+}
+
+function _zsh_codex_mode_eof_viins() {
+  if (( _zsh_codex_mode_server_pid > 0 )); then
+    _zsh_codex_mode_toggle
+  elif (( _zsh_codex_mode_emulate_eof )) && [[ -z "$BUFFER" ]]; then
+    exit
+  else
+    zle _zsh_codex_mode_original_eof_viins
+  fi
+}
+
 function _zsh_codex_mode_bindkeys() {
+  local -a binding
+
   if [[ -n "$ZSH_CODEX_MODE_KEY" ]]; then
     bindkey -M emacs "$ZSH_CODEX_MODE_KEY" _zsh_codex_mode_toggle
     bindkey -M viins "$ZSH_CODEX_MODE_KEY" _zsh_codex_mode_toggle
+  fi
+
+  binding=(${(z)"$(bindkey -M emacs '^D')"})
+  if [[ "${binding[2]}" != _zsh_codex_mode_eof_emacs ]]; then
+    zle -A "${binding[2]}" _zsh_codex_mode_original_eof_emacs
+    bindkey -M emacs '^D' _zsh_codex_mode_eof_emacs
+  fi
+
+  binding=(${(z)"$(bindkey -M viins '^D')"})
+  if [[ "${binding[2]}" != _zsh_codex_mode_eof_viins ]]; then
+    zle -A "${binding[2]}" _zsh_codex_mode_original_eof_viins
+    bindkey -M viins '^D' _zsh_codex_mode_eof_viins
   fi
 }
 
 zle -N _zsh_codex_mode_toggle
 zle -N _zsh_codex_mode_clear_buffer
 zle -N _zsh_codex_mode_accept_line
+zle -N _zsh_codex_mode_eof_emacs
+zle -N _zsh_codex_mode_eof_viins
 
 autoload -Uz add-zle-hook-widget add-zsh-hook
 add-zle-hook-widget line-init _zsh_codex_mode_update_predisplay
