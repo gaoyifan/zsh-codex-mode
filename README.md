@@ -2,6 +2,8 @@
 
 Codex, right in your Zsh.
 
+![Switch seamlessly between Zsh and Codex](assets/demo.gif)
+
 Press <kbd>Ctrl</kbd>+<kbd>X</kbd> to turn your shell into a streaming Codex conversation. Follow-up messages share the same context until you leave the mode.
 
 ## Requirements
