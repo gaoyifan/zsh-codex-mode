@@ -2,6 +2,11 @@ typeset -g ZSH_CODEX_MODE_MODEL="${ZSH_CODEX_MODE_MODEL-}"
 typeset -g ZSH_CODEX_MODE_REASONING_EFFORT="${ZSH_CODEX_MODE_REASONING_EFFORT-medium}"
 typeset -g ZSH_CODEX_MODE_PROMPT="${ZSH_CODEX_MODE_PROMPT-✨ }"
 typeset -g ZSH_CODEX_MODE_SANDBOX="${ZSH_CODEX_MODE_SANDBOX-danger-full-access}"
+typeset -g ZSH_CODEX_MODE_APPROVAL_POLICY="${ZSH_CODEX_MODE_APPROVAL_POLICY-never}"
+typeset -g ZSH_CODEX_MODE_KEY="${ZSH_CODEX_MODE_KEY-^X}"
+typeset -g ZSH_CODEX_MODE_MCP="${ZSH_CODEX_MODE_MCP-disabled}"
+typeset -gi ZSH_CODEX_MODE_ACTIVITY_MAX_LENGTH="${ZSH_CODEX_MODE_ACTIVITY_MAX_LENGTH-100}"
+typeset -gi ZSH_CODEX_MODE_SHOW_ACTIVITY="${ZSH_CODEX_MODE_SHOW_ACTIVITY-1}"
 
 typeset -gi _zsh_codex_mode_shell_pid=$$
 typeset -gi _zsh_codex_mode_server_pid=0
@@ -15,6 +20,8 @@ typeset -g _zsh_codex_mode_saved_rprompt=""
 typeset -g _zsh_codex_mode_saved_predisplay=""
 typeset -g _zsh_codex_mode_saved_emacs_enter=""
 typeset -g _zsh_codex_mode_saved_viins_enter=""
+typeset -g _zsh_codex_mode_saved_emacs_eof=""
+typeset -g _zsh_codex_mode_saved_viins_eof=""
 typeset -g _zsh_codex_mode_saved_emacs_clear=""
 typeset -g _zsh_codex_mode_saved_viins_clear=""
 typeset -ga _zsh_codex_mode_saved_highlighters=()
@@ -22,7 +29,7 @@ typeset -g _zsh_codex_mode_thread_id=""
 typeset -g _zsh_codex_mode_log=""
 
 function _zsh_codex_mode_update_predisplay() {
-  if [[ -n "$_zsh_codex_mode_thread_id" ]]; then
+  if (( _zsh_codex_mode_server_pid > 0 )); then
     PROMPT=""
     RPROMPT=""
     PREDISPLAY="$ZSH_CODEX_MODE_PROMPT"
@@ -44,7 +51,6 @@ function _zsh_codex_mode_read_response() {
 }
 
 function _zsh_codex_mode_start_server() {
-  local request_id
   setopt local_options no_monitor
 
   _zsh_codex_mode_log="$(mktemp "${TMPDIR:-/tmp}/zsh-codex-mode.XXXXXX")" || return 1
@@ -54,6 +60,12 @@ function _zsh_codex_mode_start_server() {
   exec {_zsh_codex_mode_write_fd}>&p
   exec {_zsh_codex_mode_read_fd}<&p
   _zsh_codex_mode_request_id=0
+}
+
+function _zsh_codex_mode_initialize_server() {
+  local request_id
+
+  [[ -n "$_zsh_codex_mode_thread_id" ]] && return
 
   request_id=$((++_zsh_codex_mode_request_id))
   if ! jq -nc --argjson id "$request_id" '
@@ -70,7 +82,6 @@ function _zsh_codex_mode_start_server() {
     }
   ' 1>&$_zsh_codex_mode_write_fd || ! _zsh_codex_mode_read_response "$request_id"; then
     [[ -s "$_zsh_codex_mode_log" ]] && command cat -- "$_zsh_codex_mode_log"
-    _zsh_codex_mode_stop_server
     return 1
   fi
 
@@ -83,7 +94,6 @@ function _zsh_codex_mode_start_server() {
     '{id:$id,method:"config/read",params:{cwd:$cwd}}' \
     1>&$_zsh_codex_mode_write_fd || ! _zsh_codex_mode_read_response "$request_id"; then
     [[ -s "$_zsh_codex_mode_log" ]] && command cat -- "$_zsh_codex_mode_log"
-    _zsh_codex_mode_stop_server
     return 1
   fi
 
@@ -92,34 +102,36 @@ function _zsh_codex_mode_start_server() {
     --argjson id "$request_id" \
     --arg cwd "$PWD" \
     --arg model "$ZSH_CODEX_MODE_MODEL" \
-    --arg sandbox "$ZSH_CODEX_MODE_SANDBOX" '
+    --arg sandbox "$ZSH_CODEX_MODE_SANDBOX" \
+    --arg approval_policy "$ZSH_CODEX_MODE_APPROVAL_POLICY" \
+    --arg mcp "$ZSH_CODEX_MODE_MCP" '
       {
         id: $id,
         method: "thread/start",
         params: (
           {
             cwd: $cwd,
-            approvalPolicy: "never",
-            config: {
-              mcp_servers: (
-                (.config.mcp_servers // {})
-                | with_entries(.value = {enabled: false})
-              )
-            },
             ephemeral: true
           }
           + if $model == "" then {} else {model: $model} end
           + if $sandbox == "" then {} else {sandbox: $sandbox} end
+          + if $approval_policy == "" then {} else {approvalPolicy: $approval_policy} end
+          + if $mcp == "disabled" then {
+              config: {
+                mcp_servers: (
+                  (.config.mcp_servers // {})
+                  | with_entries(.value = {enabled: false})
+                )
+              }
+            } else {} end
         )
       }
     ' <<<"$REPLY" 1>&$_zsh_codex_mode_write_fd || ! _zsh_codex_mode_read_response "$request_id"; then
     [[ -s "$_zsh_codex_mode_log" ]] && command cat -- "$_zsh_codex_mode_log"
-    _zsh_codex_mode_stop_server
     return 1
   fi
 
   _zsh_codex_mode_thread_id="$(jq -er '.thread.id' <<<"$REPLY")" || {
-    _zsh_codex_mode_stop_server
     return 1
   }
 }
@@ -146,6 +158,8 @@ function _zsh_codex_mode_stop_server() {
   _zsh_codex_mode_restore_highlighting=0
   _zsh_codex_mode_saved_emacs_enter=""
   _zsh_codex_mode_saved_viins_enter=""
+  _zsh_codex_mode_saved_emacs_eof=""
+  _zsh_codex_mode_saved_viins_eof=""
   _zsh_codex_mode_saved_emacs_clear=""
   _zsh_codex_mode_saved_viins_clear=""
   _zsh_codex_mode_saved_highlighters=()
@@ -177,10 +191,14 @@ function _zsh_codex_mode_run_turn() {
 
   jq --unbuffered -nrj \
     --arg thread "$_zsh_codex_mode_thread_id" \
-    --argjson request "$request_id" '
+    --argjson request "$request_id" \
+    --argjson activity_max_length "$ZSH_CODEX_MODE_ACTIVITY_MAX_LENGTH" \
+    --argjson show_activity "$ZSH_CODEX_MODE_SHOW_ACTIVITY" '
       def brief:
         gsub("[[:space:]]+"; " ")
-        | if length > 100 then .[:99] + "…" else . end;
+        | if length > $activity_max_length then
+            .[:($activity_max_length - 1)] + "…"
+          else . end;
 
       (
         foreach inputs as $message (
@@ -204,6 +222,7 @@ function _zsh_codex_mode_run_turn() {
               .output = $message.params.delta
               | .last_newline = ($message.params.delta | endswith("\n"))
             elif ($message.method? == "item/started"
+                  and $show_activity != 0
                   and $message.params.threadId? == $thread
                   and .turn != null
                   and $message.params.turnId? == .turn) then
@@ -259,9 +278,11 @@ function _zsh_codex_mode_stop_server_on_exit() {
 }
 
 function _zsh_codex_mode_toggle() {
-  if [[ -n "$_zsh_codex_mode_thread_id" ]]; then
+  if (( _zsh_codex_mode_server_pid > 0 )); then
     eval "$_zsh_codex_mode_saved_emacs_enter"
     eval "$_zsh_codex_mode_saved_viins_enter"
+    eval "$_zsh_codex_mode_saved_emacs_eof"
+    eval "$_zsh_codex_mode_saved_viins_eof"
     eval "$_zsh_codex_mode_saved_emacs_clear"
     eval "$_zsh_codex_mode_saved_viins_clear"
     if (( _zsh_codex_mode_restore_autosuggest && $+widgets[autosuggest-enable] )); then
@@ -281,10 +302,14 @@ function _zsh_codex_mode_toggle() {
     _zsh_codex_mode_saved_predisplay="$PREDISPLAY"
     _zsh_codex_mode_saved_emacs_enter="$(bindkey -M emacs -L '^M')"
     _zsh_codex_mode_saved_viins_enter="$(bindkey -M viins -L '^M')"
+    _zsh_codex_mode_saved_emacs_eof="$(bindkey -M emacs -L '^D')"
+    _zsh_codex_mode_saved_viins_eof="$(bindkey -M viins -L '^D')"
     _zsh_codex_mode_saved_emacs_clear="$(bindkey -M emacs -L '^[[99~')"
     _zsh_codex_mode_saved_viins_clear="$(bindkey -M viins -L '^[[99~')"
     bindkey -M emacs '^M' _zsh_codex_mode_accept_line
     bindkey -M viins '^M' _zsh_codex_mode_accept_line
+    bindkey -M emacs '^D' _zsh_codex_mode_toggle
+    bindkey -M viins '^D' _zsh_codex_mode_toggle
     bindkey -M emacs '^[[99~' _zsh_codex_mode_clear_buffer
     bindkey -M viins '^[[99~' _zsh_codex_mode_clear_buffer
     if (( $+widgets[autosuggest-disable] )) && [[ -z "${_ZSH_AUTOSUGGEST_DISABLED+x}" ]]; then
@@ -308,7 +333,7 @@ function _zsh_codex_mode_clear_buffer() {
 }
 
 function _zsh_codex_mode_accept_line() {
-  if [[ -z "$_zsh_codex_mode_thread_id" ]]; then
+  if (( _zsh_codex_mode_server_pid == 0 )); then
     zle accept-line
     return
   fi
@@ -326,7 +351,9 @@ function _zsh_codex_mode_accept_line() {
   BUFFER=""
   CURSOR=0
   {
-    _zsh_codex_mode_run_turn "$prompt" && turn_completed=1
+    _zsh_codex_mode_initialize_server &&
+      _zsh_codex_mode_run_turn "$prompt" &&
+      turn_completed=1
   } always {
     if (( ! turn_completed )); then
       _zsh_codex_mode_toggle
@@ -340,8 +367,10 @@ function _zsh_codex_mode_accept_line() {
 }
 
 function _zsh_codex_mode_bindkeys() {
-  bindkey -M emacs '^X' _zsh_codex_mode_toggle
-  bindkey -M viins '^X' _zsh_codex_mode_toggle
+  if [[ -n "$ZSH_CODEX_MODE_KEY" ]]; then
+    bindkey -M emacs "$ZSH_CODEX_MODE_KEY" _zsh_codex_mode_toggle
+    bindkey -M viins "$ZSH_CODEX_MODE_KEY" _zsh_codex_mode_toggle
+  fi
 }
 
 zle -N _zsh_codex_mode_toggle
