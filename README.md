@@ -46,16 +46,16 @@ Set these variables before loading the plugin:
 | Variable | Default | Description |
 | --- | --- | --- |
 | `ZSH_CODEX_MODE_MODEL` | `""` | Model name. Empty inherits the Codex setting. |
-| `ZSH_CODEX_MODE_REASONING_EFFORT` | `medium` | Reasoning effort. Empty inherits the Codex setting. |
+| `ZSH_CODEX_MODE_REASONING_EFFORT` | `""` | Reasoning effort. Empty inherits the Codex setting. |
 | `ZSH_CODEX_MODE_PROMPT` | `✨ ` | Prompt shown in Codex mode, used verbatim including spacing. |
-| `ZSH_CODEX_MODE_SANDBOX` | `danger-full-access` | Sandbox policy: `read-only`, `workspace-write`, or `danger-full-access`. Empty inherits the Codex setting. |
-| `ZSH_CODEX_MODE_APPROVAL_POLICY` | `never` | Approval policy. Empty inherits the Codex setting. |
+| `ZSH_CODEX_MODE_SANDBOX` | `""` | Sandbox policy: `read-only`, `workspace-write`, or `danger-full-access`. Empty inherits the Codex setting. |
+| `ZSH_CODEX_MODE_APPROVAL_POLICY` | `""` | Approval policy. Empty inherits the Codex setting. |
 | `ZSH_CODEX_MODE_KEY` | `^X` | Zsh key sequence used to toggle Codex mode. Empty disables the automatic binding. |
-| `ZSH_CODEX_MODE_MCP` | `disabled` | Set to `inherit` to use MCP servers from the Codex configuration. |
+| `ZSH_CODEX_MODE_MCP` | `inherit` | Set to `disabled` to disable MCP servers. |
 | `ZSH_CODEX_MODE_ACTIVITY_MAX_LENGTH` | `100` | Positive maximum length for command and path previews. |
 | `ZSH_CODEX_MODE_SHOW_ACTIVITY` | `1` | Set to `0` to hide tool activity hints. |
 
-With the default `danger-full-access` sandbox and `never` approval policy, Codex can run commands, access the network, and read or modify any files available to your user without confirmation.
+Sandbox, approval, model, reasoning effort, and MCP behavior inherit your Codex configuration by default.
 
 ## Use
 
@@ -67,7 +67,7 @@ With the default `danger-full-access` sandbox and `never` approval policy, Codex
 
 Codex mode uses a `✨` prompt by default. Replies stream directly into the terminal, and the conversation is discarded when you leave the mode.
 
-Codex plugins are disabled. MCP servers are also disabled by default.
+Codex plugins are disabled. MCP servers inherit your Codex configuration by default.
 
 Tool calls appear as one-line `›` activity hints. Shell command previews are collapsed to one line and limited to 100 characters by default; command output and reasoning remain hidden.
 
