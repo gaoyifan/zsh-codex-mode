@@ -4,7 +4,7 @@ Codex, right in your Zsh.
 
 ![Switch seamlessly between Zsh and Codex](assets/demo.gif)
 
-Press <kbd>Ctrl</kbd>+<kbd>X</kbd> to turn your shell into a streaming Codex conversation. Follow-up messages share the same context until you leave the mode.
+Press <kbd>Ctrl</kbd>+<kbd>X</kbd> to enter Codex mode. Replies stream into the terminal, and messages share context until you leave.
 
 ## Requirements
 
@@ -45,17 +45,16 @@ Set these variables before loading the plugin:
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `ZSH_CODEX_MODE_MODEL` | `""` | Model name. Empty inherits the Codex setting. |
-| `ZSH_CODEX_MODE_REASONING_EFFORT` | `""` | Reasoning effort. Empty inherits the Codex setting. |
-| `ZSH_CODEX_MODE_PROMPT` | `✨ ` | Prompt shown in Codex mode, used verbatim including spacing. |
-| `ZSH_CODEX_MODE_SANDBOX` | `""` | Sandbox policy: `read-only`, `workspace-write`, or `danger-full-access`. Empty inherits the Codex setting. |
-| `ZSH_CODEX_MODE_APPROVAL_POLICY` | `""` | Approval policy. Empty inherits the Codex setting. |
-| `ZSH_CODEX_MODE_KEY` | `^X` | Zsh key sequence used to toggle Codex mode. Empty disables the automatic binding. |
-| `ZSH_CODEX_MODE_MCP` | `inherit` | Set to `disabled` to disable MCP servers. |
-| `ZSH_CODEX_MODE_ACTIVITY_MAX_LENGTH` | `100` | Positive maximum length for command and path previews. |
-| `ZSH_CODEX_MODE_SHOW_ACTIVITY` | `1` | Set to `0` to hide tool activity hints. |
-
-Sandbox, approval, model, reasoning effort, and MCP behavior inherit your Codex configuration by default.
+| `ZSH_CODEX_MODE_MODEL` | Codex setting | Model |
+| `ZSH_CODEX_MODE_REASONING_EFFORT` | Codex setting | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, or `ultra`; model-dependent |
+| `ZSH_CODEX_MODE_PROMPT` | `✨ ` | Prompt, including spacing |
+| `ZSH_CODEX_MODE_INPUT_STYLE` | `fg=green` | ZLE input style; empty disables it |
+| `ZSH_CODEX_MODE_SANDBOX` | Codex setting | `read-only`, `workspace-write`, or `danger-full-access` |
+| `ZSH_CODEX_MODE_APPROVAL_POLICY` | Codex setting | `untrusted`, `on-request`, or `never` |
+| `ZSH_CODEX_MODE_KEY` | `^X` | Toggle key; empty disables the binding |
+| `ZSH_CODEX_MODE_MCP` | Codex setting | `inherit` or `disabled` |
+| `ZSH_CODEX_MODE_ACTIVITY_MAX_LENGTH` | `100` | Positive maximum command and path preview length |
+| `ZSH_CODEX_MODE_SHOW_ACTIVITY` | `1` | `1` to show tool activity, `0` to hide it |
 
 ## Use
 
@@ -65,13 +64,9 @@ Sandbox, approval, model, reasoning effort, and MCP behavior inherit your Codex 
 | <kbd>Ctrl</kbd>+<kbd>D</kbd> | Leave Codex mode |
 | <kbd>Enter</kbd> | Send a message |
 
-Codex mode uses a `✨` prompt by default. Replies stream directly into the terminal, and the conversation is discarded when you leave the mode.
+Tool calls appear as concise `›` hints; command output and reasoning stay hidden. Codex plugins are disabled.
 
-Codex plugins are disabled. MCP servers inherit your Codex configuration by default.
-
-Tool calls appear as one-line `›` activity hints. Shell command previews are collapsed to one line and limited to 100 characters by default; command output and reasoning remain hidden.
-
-zsh-vi-mode, zsh-autosuggestions, and zsh-syntax-highlighting are supported but not required. Autosuggestions and syntax highlighting are paused while Codex mode is active.
+zsh-autosuggestions and zsh-syntax-highlighting pause in Codex mode. zsh-vi-mode remains supported.
 
 ## License
 

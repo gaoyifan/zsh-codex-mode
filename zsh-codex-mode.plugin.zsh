@@ -1,6 +1,7 @@
 typeset -g ZSH_CODEX_MODE_MODEL="${ZSH_CODEX_MODE_MODEL-}"
 typeset -g ZSH_CODEX_MODE_REASONING_EFFORT="${ZSH_CODEX_MODE_REASONING_EFFORT-}"
 typeset -g ZSH_CODEX_MODE_PROMPT="${ZSH_CODEX_MODE_PROMPT-✨ }"
+typeset -g ZSH_CODEX_MODE_INPUT_STYLE="${ZSH_CODEX_MODE_INPUT_STYLE-fg=green}"
 typeset -g ZSH_CODEX_MODE_SANDBOX="${ZSH_CODEX_MODE_SANDBOX-}"
 typeset -g ZSH_CODEX_MODE_APPROVAL_POLICY="${ZSH_CODEX_MODE_APPROVAL_POLICY-}"
 typeset -g ZSH_CODEX_MODE_KEY="${ZSH_CODEX_MODE_KEY-^X}"
@@ -33,6 +34,15 @@ function _zsh_codex_mode_update_predisplay() {
     PROMPT=""
     RPROMPT=""
     PREDISPLAY="$ZSH_CODEX_MODE_PROMPT"
+  fi
+}
+
+function _zsh_codex_mode_highlight_input() {
+  if (( _zsh_codex_mode_server_pid > 0 )); then
+    region_highlight=()
+    if [[ -n "$ZSH_CODEX_MODE_INPUT_STYLE" && -n "$BUFFER" ]]; then
+      region_highlight=("0 ${#BUFFER} $ZSH_CODEX_MODE_INPUT_STYLE")
+    fi
   fi
 }
 
@@ -292,6 +302,7 @@ function _zsh_codex_mode_toggle() {
       ZSH_HIGHLIGHT_HIGHLIGHTERS=("${_zsh_codex_mode_saved_highlighters[@]}")
     fi
     _zsh_codex_mode_stop_server
+    region_highlight=()
     PROMPT="$_zsh_codex_mode_saved_prompt"
     RPROMPT="$_zsh_codex_mode_saved_rprompt"
     PREDISPLAY="$_zsh_codex_mode_saved_predisplay"
@@ -379,6 +390,7 @@ zle -N _zsh_codex_mode_accept_line
 
 autoload -Uz add-zle-hook-widget add-zsh-hook
 add-zle-hook-widget line-init _zsh_codex_mode_update_predisplay
+add-zle-hook-widget line-pre-redraw _zsh_codex_mode_highlight_input
 add-zsh-hook zshexit _zsh_codex_mode_stop_server_on_exit
 
 _zsh_codex_mode_bindkeys
