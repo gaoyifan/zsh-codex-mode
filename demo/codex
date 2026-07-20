@@ -1,0 +1,45 @@
+#!/usr/bin/env zsh
+
+set -euo pipefail
+
+demo_dir=${0:A:h}
+responses=$demo_dir/responses.jsonl
+typeset demo_cwd=""
+
+function replay() {
+  local request_method=$1 record delay
+
+  while IFS= read -r record; do
+    delay=$(jq -r '.delay // 0' <<<"$record")
+    [[ "$delay" == 0 ]] || sleep "$delay"
+    jq -c '.message' <<<"$record"
+  done < <(jq -c --arg request "$request_method" 'select(.request == $request)' "$responses")
+}
+
+while IFS= read -r request; do
+  method=$(jq -r '.method // empty' <<<"$request")
+
+  case "$method" in
+    initialize | config/read)
+      replay "$method"
+      ;;
+    initialized)
+      ;;
+    thread/start)
+      demo_cwd=$(jq -r '.params.cwd' <<<"$request")
+      replay "$method"
+      ;;
+    turn/start)
+      command npm --prefix "$demo_cwd" test >/dev/null
+      command git -C "$demo_cwd" add src/slug.js test/slug.test.js
+      GIT_AUTHOR_DATE=2026-01-01T00:01:00Z \
+        GIT_COMMITTER_DATE=2026-01-01T00:01:00Z \
+        command git -C "$demo_cwd" commit -qm "feat: support underscores in slugs"
+      command git -C "$demo_cwd" add README.md
+      GIT_AUTHOR_DATE=2026-01-01T00:02:00Z \
+        GIT_COMMITTER_DATE=2026-01-01T00:02:00Z \
+        command git -C "$demo_cwd" commit -qm "docs: fix README typo"
+      replay "$method"
+      ;;
+  esac
+done

@@ -1,0 +1,13 @@
+{"request":"initialize","message":{"id":1,"result":{}}}
+{"request":"config/read","message":{"id":2,"result":{"config":{"mcp_servers":{}}}}}
+{"request":"thread/start","message":{"id":3,"result":{"thread":{"id":"demo-thread"}}}}
+{"request":"turn/start","message":{"id":4,"result":{"turn":{"id":"demo-turn","status":"inProgress"}}}}
+{"request":"turn/start","delay":0.4,"message":{"method":"item/started","params":{"threadId":"demo-thread","turnId":"demo-turn","item":{"type":"commandExecution","command":"git diff --stat"}}}}
+{"request":"turn/start","delay":0.5,"message":{"method":"item/agentMessage/delta","params":{"threadId":"demo-thread","turnId":"demo-turn","delta":"I’ll inspect the changes, run tests, and make two focused commits.\n"}}}
+{"request":"turn/start","delay":0.5,"message":{"method":"item/started","params":{"threadId":"demo-thread","turnId":"demo-turn","item":{"type":"commandExecution","command":"npm test"}}}}
+{"request":"turn/start","delay":0.6,"message":{"method":"item/started","params":{"threadId":"demo-thread","turnId":"demo-turn","item":{"type":"commandExecution","command":"git add src/slug.js test/slug.test.js && git commit -m \"feat: support underscores in slugs\""}}}}
+{"request":"turn/start","delay":0.6,"message":{"method":"item/started","params":{"threadId":"demo-thread","turnId":"demo-turn","item":{"type":"commandExecution","command":"git add README.md && git commit -m \"docs: fix README typo\""}}}}
+{"request":"turn/start","delay":0.4,"message":{"method":"item/agentMessage/delta","params":{"threadId":"demo-thread","turnId":"demo-turn","delta":"Tests passed. Created two logical commits:\n\n"}}}
+{"request":"turn/start","delay":0.15,"message":{"method":"item/agentMessage/delta","params":{"threadId":"demo-thread","turnId":"demo-turn","delta":"- `feat: support underscores in slugs`\n"}}}
+{"request":"turn/start","delay":0.15,"message":{"method":"item/agentMessage/delta","params":{"threadId":"demo-thread","turnId":"demo-turn","delta":"- `docs: fix README typo`\n\nWorking tree is clean.\n"}}}
+{"request":"turn/start","message":{"method":"turn/completed","params":{"threadId":"demo-thread","turn":{"id":"demo-turn","status":"completed"}}}}
