@@ -1,0 +1,37 @@
+#!/usr/bin/env zsh
+
+set -euo pipefail
+
+counter=$ZSH_CODEX_MODE_TEST_COUNTER
+log=$ZSH_CODEX_MODE_TEST_LOG
+server=$(($(<"$counter") + 1))
+print -r -- "$server" >| "$counter"
+
+while IFS= read -r request; do
+  jq -c --argjson server "$server" '. + {testServer: $server}' <<<"$request" >>"$log"
+  id=$(jq -r '.id // empty' <<<"$request")
+  method=$(jq -r '.method // empty' <<<"$request")
+
+  case "$method" in
+    initialize)
+      jq -nc --argjson id "$id" '{id: $id, result: {}}'
+      ;;
+    initialized)
+      ;;
+    config/read)
+      jq -nc --argjson id "$id" '{id: $id, result: {config: {}}}'
+      ;;
+    thread/start)
+      jq -nc --argjson id "$id" --arg thread "thread-$server" \
+        '{id: $id, result: {thread: {id: $thread}}}'
+      ;;
+    turn/start)
+      thread=$(jq -r '.params.threadId' <<<"$request")
+      turn="turn-$server-$id"
+      jq -nc --argjson id "$id" --arg turn "$turn" \
+        '{id: $id, result: {turn: {id: $turn}}}'
+      jq -nc --arg thread "$thread" --arg turn "$turn" \
+        '{method: "turn/completed", params: {threadId: $thread, turn: {id: $turn, status: "completed"}}}'
+      ;;
+  esac
+done

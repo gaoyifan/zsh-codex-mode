@@ -14,7 +14,7 @@ Codex, right in your Zsh.
 
 ![Switch seamlessly between Zsh and Codex](assets/demo.gif)
 
-Press <kbd>Ctrl</kbd>+<kbd>X</kbd> to enter Codex mode. Replies stream into the terminal, and messages share context until you leave.
+Press <kbd>Ctrl</kbd>+<kbd>X</kbd> to enter Codex mode. Replies stream into the terminal, and messages keep their context when you switch back to the shell.
 
 ## Requirements
 
@@ -70,8 +70,8 @@ Set these variables before loading the plugin:
 
 | Key | Action |
 | --- | --- |
-| <kbd>Ctrl</kbd>+<kbd>X</kbd> | Enter or leave Codex mode |
-| <kbd>Ctrl</kbd>+<kbd>D</kbd> | Leave Codex mode |
+| <kbd>Ctrl</kbd>+<kbd>X</kbd> | Switch between shell and Codex mode, preserving context |
+| <kbd>Ctrl</kbd>+<kbd>D</kbd> | Leave Codex mode and discard its context |
 | <kbd>Enter</kbd> | Send a message |
 
 Tool calls appear as concise `›` hints; command output and reasoning stay hidden. Codex plugins are disabled.

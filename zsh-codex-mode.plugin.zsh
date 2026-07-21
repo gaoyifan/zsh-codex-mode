@@ -10,6 +10,7 @@ typeset -gi ZSH_CODEX_MODE_ACTIVITY_MAX_LENGTH="${ZSH_CODEX_MODE_ACTIVITY_MAX_LE
 typeset -gi ZSH_CODEX_MODE_SHOW_ACTIVITY="${ZSH_CODEX_MODE_SHOW_ACTIVITY-1}"
 
 typeset -gi _zsh_codex_mode_shell_pid=$$
+typeset -gi _zsh_codex_mode_active=0
 typeset -gi _zsh_codex_mode_server_pid=0
 typeset -gi _zsh_codex_mode_request_id=0
 typeset -gi _zsh_codex_mode_read_fd=-1
@@ -35,7 +36,7 @@ if [[ ! -o ignore_eof ]]; then
 fi
 
 function _zsh_codex_mode_update_predisplay() {
-  if (( _zsh_codex_mode_server_pid > 0 )); then
+  if (( _zsh_codex_mode_active )); then
     PROMPT=""
     RPROMPT=""
     PREDISPLAY="$ZSH_CODEX_MODE_PROMPT"
@@ -43,7 +44,7 @@ function _zsh_codex_mode_update_predisplay() {
 }
 
 function _zsh_codex_mode_highlight_input() {
-  if (( _zsh_codex_mode_server_pid > 0 )); then
+  if (( _zsh_codex_mode_active )); then
     region_highlight=()
     if [[ -n "$ZSH_CODEX_MODE_INPUT_STYLE" && -n "$BUFFER" ]]; then
       region_highlight=("0 ${#BUFFER} $ZSH_CODEX_MODE_INPUT_STYLE")
@@ -166,6 +167,7 @@ function _zsh_codex_mode_stop_server() {
   fi
 
   _zsh_codex_mode_server_pid=0
+  _zsh_codex_mode_active=0
   _zsh_codex_mode_request_id=0
   _zsh_codex_mode_read_fd=-1
   _zsh_codex_mode_write_fd=-1
@@ -290,25 +292,40 @@ function _zsh_codex_mode_stop_server_on_exit() {
   fi
 }
 
+function _zsh_codex_mode_leave() {
+  _zsh_codex_mode_active=0
+  eval "$_zsh_codex_mode_saved_emacs_enter"
+  eval "$_zsh_codex_mode_saved_viins_enter"
+  eval "$_zsh_codex_mode_saved_emacs_clear"
+  eval "$_zsh_codex_mode_saved_viins_clear"
+  if (( _zsh_codex_mode_restore_autosuggest && $+widgets[autosuggest-enable] )); then
+    zle autosuggest-enable
+  fi
+  if (( _zsh_codex_mode_restore_highlighting )); then
+    ZSH_HIGHLIGHT_HIGHLIGHTERS=("${_zsh_codex_mode_saved_highlighters[@]}")
+  fi
+  _zsh_codex_mode_restore_autosuggest=0
+  _zsh_codex_mode_restore_highlighting=0
+  region_highlight=()
+  PROMPT="$_zsh_codex_mode_saved_prompt"
+  RPROMPT="$_zsh_codex_mode_saved_rprompt"
+  PREDISPLAY="$_zsh_codex_mode_saved_predisplay"
+  zle .reset-prompt
+}
+
+function _zsh_codex_mode_destroy() {
+  _zsh_codex_mode_leave
+  _zsh_codex_mode_stop_server
+}
+
 function _zsh_codex_mode_toggle() {
-  if (( _zsh_codex_mode_server_pid > 0 )); then
-    eval "$_zsh_codex_mode_saved_emacs_enter"
-    eval "$_zsh_codex_mode_saved_viins_enter"
-    eval "$_zsh_codex_mode_saved_emacs_clear"
-    eval "$_zsh_codex_mode_saved_viins_clear"
-    if (( _zsh_codex_mode_restore_autosuggest && $+widgets[autosuggest-enable] )); then
-      zle autosuggest-enable
-    fi
-    if (( _zsh_codex_mode_restore_highlighting )); then
-      ZSH_HIGHLIGHT_HIGHLIGHTERS=("${_zsh_codex_mode_saved_highlighters[@]}")
-    fi
-    _zsh_codex_mode_stop_server
-    region_highlight=()
-    PROMPT="$_zsh_codex_mode_saved_prompt"
-    RPROMPT="$_zsh_codex_mode_saved_rprompt"
-    PREDISPLAY="$_zsh_codex_mode_saved_predisplay"
+  if (( _zsh_codex_mode_active )); then
+    _zsh_codex_mode_leave
   else
-    _zsh_codex_mode_start_server || return
+    if (( _zsh_codex_mode_server_pid == 0 )); then
+      _zsh_codex_mode_start_server || return
+    fi
+
     _zsh_codex_mode_saved_prompt="$PROMPT"
     _zsh_codex_mode_saved_rprompt="$RPROMPT"
     _zsh_codex_mode_saved_predisplay="$PREDISPLAY"
@@ -329,9 +346,10 @@ function _zsh_codex_mode_toggle() {
       ZSH_HIGHLIGHT_HIGHLIGHTERS=()
       _zsh_codex_mode_restore_highlighting=1
     fi
+    _zsh_codex_mode_active=1
+    _zsh_codex_mode_update_predisplay
+    zle .reset-prompt
   fi
-  _zsh_codex_mode_update_predisplay
-  zle .reset-prompt
 }
 
 function _zsh_codex_mode_clear_buffer() {
@@ -341,7 +359,7 @@ function _zsh_codex_mode_clear_buffer() {
 }
 
 function _zsh_codex_mode_accept_line() {
-  if (( _zsh_codex_mode_server_pid == 0 )); then
+  if (( ! _zsh_codex_mode_active )); then
     zle accept-line
     return
   fi
@@ -364,7 +382,7 @@ function _zsh_codex_mode_accept_line() {
       turn_completed=1
   } always {
     if (( ! turn_completed )); then
-      _zsh_codex_mode_toggle
+      _zsh_codex_mode_destroy
       (( TRY_BLOCK_ERROR = 0 ))
     fi
   }
@@ -375,8 +393,8 @@ function _zsh_codex_mode_accept_line() {
 }
 
 function _zsh_codex_mode_eof_emacs() {
-  if (( _zsh_codex_mode_server_pid > 0 )); then
-    _zsh_codex_mode_toggle
+  if (( _zsh_codex_mode_active )); then
+    _zsh_codex_mode_destroy
   elif (( _zsh_codex_mode_emulate_eof )) && [[ -z "$BUFFER" ]]; then
     exit
   else
@@ -385,8 +403,8 @@ function _zsh_codex_mode_eof_emacs() {
 }
 
 function _zsh_codex_mode_eof_viins() {
-  if (( _zsh_codex_mode_server_pid > 0 )); then
-    _zsh_codex_mode_toggle
+  if (( _zsh_codex_mode_active )); then
+    _zsh_codex_mode_destroy
   elif (( _zsh_codex_mode_emulate_eof )) && [[ -z "$BUFFER" ]]; then
     exit
   else
